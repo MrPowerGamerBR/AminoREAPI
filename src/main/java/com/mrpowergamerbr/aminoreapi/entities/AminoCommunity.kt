@@ -142,7 +142,7 @@ data class AminoBlogPost(
 		val keywords: String,
 		val latitude: Int,
 		val longitude: Int,
-		val endTime: Int,
+		val endTime: String,
 		val type: Int,
 		val blogId: String,
 		val commentsCount: Int)
