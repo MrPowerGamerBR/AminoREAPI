@@ -1,4 +1,4 @@
-package com.mrpowergamerbr.animoreapi.utils
+package com.mrpowergamerbr.aminoreapi.utils
 
 object Endpoints {
 	val PREFIX = "http://service.narvii.com/api/v1";

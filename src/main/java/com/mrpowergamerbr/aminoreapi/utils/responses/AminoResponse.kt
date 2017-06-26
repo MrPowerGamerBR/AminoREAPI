@@ -1,4 +1,4 @@
-package com.mrpowergamerbr.animoreapi.utils.responses
+package com.mrpowergamerbr.aminoreapi.utils.responses
 
 import com.google.gson.annotations.SerializedName
 

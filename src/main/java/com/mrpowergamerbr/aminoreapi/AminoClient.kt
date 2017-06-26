@@ -1,13 +1,18 @@
-package com.mrpowergamerbr.animoreapi
+package com.mrpowergamerbr.aminoreapi
 
 import com.github.kevinsawicki.http.HttpRequest
 import com.google.gson.JsonObject
 import com.google.gson.JsonParser
-import com.mrpowergamerbr.animoreapi.entities.AminoCommunity
-import com.mrpowergamerbr.animoreapi.entities.AminoInvitation
-import com.mrpowergamerbr.animoreapi.utils.Endpoints
-import com.mrpowergamerbr.animoreapi.utils.responses.LoginResponse
+import com.mrpowergamerbr.aminoreapi.entities.AminoCommunity
+import com.mrpowergamerbr.aminoreapi.entities.AminoInvitation
+import com.mrpowergamerbr.aminoreapi.utils.Endpoints
+import com.mrpowergamerbr.aminoreapi.utils.responses.LoginResponse
 import java.net.URLEncoder
+
+fun main(args: Array<String>) {
+	var aminoClient = AminoClient("leonardomalaman+loritta@gmail.com", "LorittaAminoAccountHey", "01F7C86E44138D5AA337F204B95599EBBBD15D4CBE53EBDAC0F032EA653EEFDF22D5A761C0517E1499");
+	aminoClient.login();
+}
 
 class AminoClient(val login: String, val password: String, val deviceId: String) {
 	lateinit var secret: String;

@@ -1,13 +1,13 @@
-package com.mrpowergamerbr.animoreapi.entities
+package com.mrpowergamerbr.aminoreapi.entities
 
 import com.github.kevinsawicki.http.HttpRequest
 import com.github.salomonbrys.kotson.fromJson
 import com.google.gson.JsonObject
 import com.google.gson.JsonParser
 import com.google.gson.annotations.SerializedName
-import com.mrpowergamerbr.animoreapi.Amino
-import com.mrpowergamerbr.animoreapi.AminoClient
-import com.mrpowergamerbr.animoreapi.utils.Endpoints
+import com.mrpowergamerbr.aminoreapi.Amino
+import com.mrpowergamerbr.aminoreapi.AminoClient
+import com.mrpowergamerbr.aminoreapi.utils.Endpoints
 
 data class AminoCommunity(
 		var aminoClient: AminoClient,

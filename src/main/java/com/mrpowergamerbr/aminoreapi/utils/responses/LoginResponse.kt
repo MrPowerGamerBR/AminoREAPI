@@ -1,4 +1,4 @@
-package com.mrpowergamerbr.animoreapi.utils.responses
+package com.mrpowergamerbr.aminoreapi.utils.responses
 
 class LoginResponse(jsonResponse: String) : AminoResponse(jsonResponse) {
 	lateinit var secret: String;

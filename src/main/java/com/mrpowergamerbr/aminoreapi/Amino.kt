@@ -1,9 +1,9 @@
-package com.mrpowergamerbr.animoreapi
+package com.mrpowergamerbr.aminoreapi
 
 import com.github.kevinsawicki.http.HttpRequest
 import com.google.gson.Gson
 import com.google.gson.JsonObject
-import com.mrpowergamerbr.animoreapi.utils.Endpoints
+import com.mrpowergamerbr.aminoreapi.utils.Endpoints
 
 object Amino {
 	val gson: Gson = Gson();
