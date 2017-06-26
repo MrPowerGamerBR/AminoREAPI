@@ -145,4 +145,5 @@ data class AminoBlogPost(
 		val endTime: String,
 		val type: Int,
 		val blogId: String,
-		val commentsCount: Int)
+		val commentsCount: Int,
+		val mediaList: List<Object>)
