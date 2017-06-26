@@ -9,11 +9,6 @@ import com.mrpowergamerbr.aminoreapi.utils.Endpoints
 import com.mrpowergamerbr.aminoreapi.utils.responses.LoginResponse
 import java.net.URLEncoder
 
-fun main(args: Array<String>) {
-	var aminoClient = AminoClient("leonardomalaman+loritta@gmail.com", "LorittaAminoAccountHey", "01F7C86E44138D5AA337F204B95599EBBBD15D4CBE53EBDAC0F032EA653EEFDF22D5A761C0517E1499");
-	aminoClient.login();
-}
-
 class AminoClient(val login: String, val password: String, val deviceId: String) {
 	lateinit var secret: String;
 	lateinit var sid: String;
