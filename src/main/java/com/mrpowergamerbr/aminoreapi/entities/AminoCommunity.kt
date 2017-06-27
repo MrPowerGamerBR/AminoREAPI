@@ -47,7 +47,7 @@ data class AminoCommunity(
 				.acceptJson()
 				.body();
 
-		println(response)
+		_println(response)
 	}
 
 	fun join(invitationUrl: String) {
@@ -66,7 +66,7 @@ data class AminoCommunity(
 				.send(innerObject.toString())
 				.body();
 
-		println(response)
+		_println(response)
 	}
 
 	fun leave() {
@@ -76,7 +76,7 @@ data class AminoCommunity(
 				.acceptJson()
 				.body();
 
-		println(response)
+		_println(response)
 	}
 
 	fun getBlogFeed(start: Int, size: Int): List<AminoBlogPost> {
@@ -86,7 +86,7 @@ data class AminoCommunity(
 				.acceptJson()
 				.body();
 
-		println(response);
+		_println(response);
 
 		var parser = JsonParser();
 		var parsedJson = parser.parse(response).asJsonObject.get("blogList").asJsonArray;

@@ -22,7 +22,11 @@ object Endpoints {
 	val TRENDING_COMMUNITIES = PREFIX + "/g/s/community/trending?start=%s&size=%s&language=%s";
 	val COMMUNITY_FEED = PREFIX + "/%s/s/feed/blog-all?start=%s&size=%s"
 	val COMMUNITY_ONLINE_MEMBERS = PREFIX + "/%s/s/community/online-members-check"
-	val SUGGESTED_KEYWORDS = PREFIX + "/g/s/community/suggested-keywords?q=%s&start=%s&size=%s&language=%s";
+	val SUGGESTED_KEYWORDS = PREFIX + "/g/s/community/search/suggested-keywords?q=%s&start=%s&size=%s&language=%s";
+	val SEARCH_TAGS = PREFIX + "/g/s/community/search/tags?q=%s";
+	val SEARCH_COMMUNITIES = PREFIX + "/g/s/community/search?q=%s&start=%s&size=%s&language=%s&completeKeyword=%s";
+	val JOINED_COMMUNITIES = PREFIX + "/g/s/community/joined?q=%s&start=%s&size=%s";
+	val SUPPORTED_LANGUAGES = PREFIX + "/g/s/community-collection/supported-languages?start=%s&size=%s";
 
 	// ===[ NOTIFICATION ENDPOINTS ]===
 	val COMMUNITY_NOTIFICATIONS = PREFIX + "/%s/s/notification?start=%s&size=%s&cv=%s"

@@ -1,8 +1,10 @@
 package com.mrpowergamerbr.aminoreapi
 
 import com.github.kevinsawicki.http.HttpRequest
+import com.github.salomonbrys.kotson.fromJson
 import com.google.gson.JsonObject
 import com.google.gson.JsonParser
+import com.mrpowergamerbr.aminoreapi.entities.AminoBlogPost
 import com.mrpowergamerbr.aminoreapi.entities.AminoCommunity
 import com.mrpowergamerbr.aminoreapi.entities.AminoInvitation
 import com.mrpowergamerbr.aminoreapi.utils.Endpoints
@@ -37,7 +39,7 @@ class AminoClient(val login: String, val password: String, val deviceId: String)
 		val aminoResponse = Amino.gson.fromJson(response, LoginResponse::class.java);
 		aminoResponse.jsonResponse = response;
 
-		println(aminoResponse.jsonResponse)
+		_println(aminoResponse.jsonResponse)
 
 		this.secret = aminoResponse.secret;
 		this.sid = aminoResponse.sid;
@@ -52,7 +54,7 @@ class AminoClient(val login: String, val password: String, val deviceId: String)
 				.acceptJson()
 				.body();
 
-		println(response)
+		_println(response)
 	}
 
 	fun getSuggestedCommunities(lang: String) {
@@ -62,7 +64,7 @@ class AminoClient(val login: String, val password: String, val deviceId: String)
 				.acceptJson()
 				.body();
 
-		println(response)
+		_println(response)
 	}
 
 	fun getTrendingCommunities(start: Int, size: Int, lang: String) {
@@ -72,17 +74,45 @@ class AminoClient(val login: String, val password: String, val deviceId: String)
 				.acceptJson()
 				.body();
 
-		println(response)
+		_println(response)
 	}
 
-	fun getSuggestedKeywords(keyword: String, start: Int, size: Int, lang: String) {
+	fun getSuggestedKeywords(keyword: String, start: Int, size: Int, lang: String): List<String> {
 		var response = HttpRequest
-				.get(String.format(Endpoints.SUGGESTED_KEYWORDS, keyword, start, size, lang))
+				.get(String.format(Endpoints.SUGGESTED_KEYWORDS, URLEncoder.encode(keyword, "UTF-8"), start, size, lang))
 				.header("NDCAUTH", "sid=" + sid)
 				.acceptJson()
 				.body();
 
-		println(response)
+		_println(response)
+
+		var parser = JsonParser();
+		var parsedJson = parser.parse(response).asJsonObject.get("suggestedKeywordsList").asJsonArray;
+
+		var list = ArrayList<String>();
+
+		for (value in parsedJson) {
+			list.add(value.asString);
+		}
+
+		return list;
+	}
+
+	fun searchCommunities(query: String, start: Int, size: Int, language: String, completeKeyword: Int): List<AminoCommunity> {
+		var response = HttpRequest
+				.get(String.format(Endpoints.SEARCH_COMMUNITIES, URLEncoder.encode(query, "UTF-8"), start, size, language, completeKeyword))
+				.header("NDCAUTH", "sid=" + sid)
+				.acceptJson()
+				.body();
+
+		_println(response)
+
+		var parser = JsonParser();
+		var parsedJson = parser.parse(response).asJsonObject.get("communityList").asJsonArray;
+
+		var communityResults = Amino.gson.fromJson<List<AminoCommunity>>(parsedJson)
+
+		return communityResults;
 	}
 
 	fun getHeadlines(start: Int, size: Int) {
@@ -92,7 +122,7 @@ class AminoClient(val login: String, val password: String, val deviceId: String)
 				.acceptJson()
 				.body();
 
-		println(response)
+		_println(response)
 	}
 
 	fun getDeviceInfo() { // TODO: Fix
@@ -102,7 +132,7 @@ class AminoClient(val login: String, val password: String, val deviceId: String)
 				.acceptJson()
 				.body();
 
-		println(response)
+		_println(response)
 	}
 
 	fun getCommunityById(communityId: String): AminoCommunity {
@@ -116,7 +146,7 @@ class AminoClient(val login: String, val password: String, val deviceId: String)
 		var parser = JsonParser();
 		var parsedJson = parser.parse(response).asJsonObject.get("community");
 
-		println(parsedJson.toString());
+		_println(parsedJson.toString());
 
 		var community = Amino.gson.fromJson(parsedJson.toString(), AminoCommunity::class.java);
 		community.id = communityId;
@@ -131,7 +161,7 @@ class AminoClient(val login: String, val password: String, val deviceId: String)
 				.acceptJson()
 				.body();
 
-		println(invitationIdResponse);
+		_println(invitationIdResponse);
 
 		var parser = JsonParser();
 		var parsedJson = parser.parse(invitationIdResponse).asJsonObject.get("invitation").asJsonObject;
@@ -146,7 +176,7 @@ class AminoClient(val login: String, val password: String, val deviceId: String)
 				.acceptJson()
 				.body();
 
-		println(response)
+		_println(response)
 	}
 
 	fun sendMessageInChat(communityId: String, thread: String, chatMessage: String) {
@@ -156,7 +186,7 @@ class AminoClient(val login: String, val password: String, val deviceId: String)
 		innerObject.addProperty("type", 0)
 		innerObject.addProperty("clientRefId", 843397539)
 
-		println(innerObject)
+		_println(innerObject)
 
 		var response = HttpRequest
 				.post(String.format(Endpoints.COMMUNITY_CHAT_SEND_MESSAGE, communityId, thread, chatMessage))
@@ -165,7 +195,7 @@ class AminoClient(val login: String, val password: String, val deviceId: String)
 				.send(innerObject.toString())
 				.body();
 
-		println(response)
+		_println(response)
 	}
 
 	fun getMessagesInChat(communityId: String, threadId: String, start: Int, size: Int): String {
@@ -175,7 +205,7 @@ class AminoClient(val login: String, val password: String, val deviceId: String)
 				.acceptJson()
 				.body();
 
-		println(response)
+		_println(response)
 
 		return response;
 	}
