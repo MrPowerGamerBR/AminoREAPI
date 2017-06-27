@@ -191,7 +191,7 @@ data class AminoBlogPost(
 		val type: Int,
 		val blogId: String,
 		val commentsCount: Int,
-		val mediaList: List<Object>) {
+		val mediaList: List<Any>) {
 
 	fun like(cv: Double, value: Int) {
 		var response = HttpRequest
@@ -256,7 +256,7 @@ data class AminoChatThread(
 		val condition: Int,
 		val icon: String,
 		val latestActivityTime: String,
-		val extensions: Object,
+		val extensions: Any,
 		val createdTime: String) {
 
 	fun join() {
@@ -302,7 +302,7 @@ data class AminoMessage(
 		val messageId: String,
 		val createdTime: String,
 		val type: Int,
-		val mediaValue: List<Object>)
+		val mediaValue: List<Any>)
 
 data class AminoExtensions(
 		val bm: List<String>,

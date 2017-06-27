@@ -4,7 +4,6 @@ import com.github.kevinsawicki.http.HttpRequest
 import com.github.salomonbrys.kotson.fromJson
 import com.google.gson.JsonObject
 import com.google.gson.JsonParser
-import com.mrpowergamerbr.aminoreapi.entities.AminoBlogPost
 import com.mrpowergamerbr.aminoreapi.entities.AminoCommunity
 import com.mrpowergamerbr.aminoreapi.entities.AminoInvitation
 import com.mrpowergamerbr.aminoreapi.utils.Endpoints

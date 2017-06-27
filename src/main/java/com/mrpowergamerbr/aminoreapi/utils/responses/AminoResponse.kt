@@ -3,7 +3,7 @@ package com.mrpowergamerbr.aminoreapi.utils.responses
 import com.google.gson.annotations.SerializedName
 
 open class AminoResponse {
-	lateinit var jsonResponse: String;
+	var jsonResponse: String;
 	@SerializedName("api:message")
 	lateinit var apiMessage: String;
 	@SerializedName("api:timestamp")
