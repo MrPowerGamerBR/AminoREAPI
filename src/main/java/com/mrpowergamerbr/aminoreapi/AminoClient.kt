@@ -12,6 +12,7 @@ import java.net.URLEncoder
 class AminoClient(val login: String, val password: String, val deviceId: String) {
 	lateinit var secret: String;
 	lateinit var sid: String;
+	lateinit var uid: String;
 
 	/**
 	 * Starts the login process using the provided login, password and deviceId
@@ -40,6 +41,7 @@ class AminoClient(val login: String, val password: String, val deviceId: String)
 
 		this.secret = aminoResponse.secret;
 		this.sid = aminoResponse.sid;
+		this.uid = aminoResponse.account.uid;
 		return aminoResponse;
 	}
 
@@ -135,16 +137,6 @@ class AminoClient(val login: String, val password: String, val deviceId: String)
 		var parsedJson = parser.parse(invitationIdResponse).asJsonObject.get("invitation").asJsonObject;
 
 		return Amino.gson.fromJson(parsedJson.toString(), AminoInvitation::class.java);
-	}
-
-	fun getOnlineMembersInCommunity(communityId: String) {
-		var response = HttpRequest
-				.get(String.format(Endpoints.COMMUNITY_ONLINE_MEMBERS, communityId))
-				.header("NDCAUTH", "sid=" + sid)
-				.acceptJson()
-				.body();
-
-		println(response)
 	}
 
 	fun getNotificationsForCommunity(communityId: String, start: Int, size: Int, cv: Double) { // TODO: What is cv?

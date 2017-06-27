@@ -7,6 +7,7 @@ import com.mrpowergamerbr.aminoreapi.utils.Endpoints
 
 object Amino {
 	val gson: Gson = Gson();
+	var DEBUG = false;
 
 	fun registerCheck(email: String, deviceId: String) {
 		val innerObject = JsonObject()
@@ -54,5 +55,11 @@ object Amino {
 				.body();
 
 		println(response);
+	}
+}
+
+inline fun _println(obj: Any?) {
+	if (Amino.DEBUG) {
+		println(obj.toString());
 	}
 }

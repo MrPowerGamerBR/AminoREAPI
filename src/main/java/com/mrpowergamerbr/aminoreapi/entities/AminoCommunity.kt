@@ -2,11 +2,13 @@ package com.mrpowergamerbr.aminoreapi.entities
 
 import com.github.kevinsawicki.http.HttpRequest
 import com.github.salomonbrys.kotson.fromJson
+import com.google.gson.JsonArray
 import com.google.gson.JsonObject
 import com.google.gson.JsonParser
 import com.google.gson.annotations.SerializedName
 import com.mrpowergamerbr.aminoreapi.Amino
 import com.mrpowergamerbr.aminoreapi.AminoClient
+import com.mrpowergamerbr.aminoreapi._println
 import com.mrpowergamerbr.aminoreapi.utils.Endpoints
 
 data class AminoCommunity(
@@ -91,7 +93,49 @@ data class AminoCommunity(
 
 		var blogFeed = Amino.gson.fromJson<List<AminoBlogPost>>(parsedJson)
 
+		for (post in blogFeed) {
+			post.community = this;
+		}
 		return blogFeed;
+	}
+
+	fun getMemberCount(): AminoMemberCount {
+		var response = HttpRequest
+				.get(String.format(Endpoints.COMMUNITY_ONLINE_MEMBERS, id))
+				.header("NDCAUTH", "sid=" + aminoClient.sid)
+				.acceptJson()
+				.body();
+
+		_println(response)
+
+		var parser = JsonParser();
+		var parsedJson = parser.parse(response).asJsonObject.get("onlineMembersCheckResult").asJsonArray;
+
+		var memberCount = Amino.gson.fromJson(parsedJson, AminoMemberCount::class.java)
+
+		return memberCount;
+	}
+
+
+	fun getAllChats(chatType: String, start: Int, size: Int, cv: Double): List<AminoChatThread> {
+		var response = HttpRequest
+				.get(String.format(Endpoints.COMMUNITY_CHAT_THREAD, id, chatType, start, size, cv))
+				.header("NDCAUTH", "sid=" + aminoClient.sid)
+				.acceptJson()
+				.body();
+
+		_println(response)
+
+		var parser = JsonParser();
+		var parsedJson = parser.parse(response).asJsonObject.get("threadList").asJsonArray;
+
+		var chatThreads = Amino.gson.fromJson<List<AminoChatThread>>(parsedJson)
+
+		for (thread in chatThreads) {
+			thread.community = this;
+		}
+
+		return chatThreads;
 	}
 }
 
@@ -131,6 +175,7 @@ data class AminoInvitation(
 		val inviteCode: String)
 
 data class AminoBlogPost(
+		var community: AminoCommunity,
 		val status: Int,
 		val style: Int,
 		val modifiedTime: String,
@@ -146,4 +191,119 @@ data class AminoBlogPost(
 		val type: Int,
 		val blogId: String,
 		val commentsCount: Int,
-		val mediaList: List<Object>)
+		val mediaList: List<Object>) {
+
+	fun like(cv: Double, value: Int) {
+		var response = HttpRequest
+				.post(String.format(Endpoints.POST_VOTE + "?cv=%s&value=%s", community.id, blogId, cv, value))
+				.header("NDCAUTH", "sid=" + community.aminoClient.sid)
+				.acceptJson()
+				.body();
+
+		_println(response)
+	}
+
+	fun unlike() {
+		var response = HttpRequest
+				.delete(String.format(Endpoints.POST_VOTE, community.id, blogId))
+				.header("NDCAUTH", "sid=" + community.aminoClient.sid)
+				.acceptJson()
+				.body();
+
+		_println(response);
+	}
+
+	fun comment(message: String) {
+		val innerObject = JsonObject()
+
+		innerObject.addProperty("content", message)
+		innerObject.add("mediaList", JsonArray())
+
+		var response = HttpRequest
+				.post(String.format(Endpoints.POST_COMMENT, community.id, blogId))
+				.header("NDCAUTH", "sid=" + community.aminoClient.sid)
+				.acceptJson()
+				.send(innerObject.toString())
+				.body();
+
+		_println(response);
+	}
+}
+
+data class AminoMemberCount(
+		val onlineMembersCount: Int,
+		val otherOnlineMembersCount: Int
+)
+
+data class AminoChatThread(
+		var community: AminoCommunity,
+		val uid: String,
+		val membersQuota: Int,
+		val membersSummary: List<AminoUser>,
+		val threadId: String,
+		val keywords: String,
+		val membersCount: Int,
+		val title: String,
+		val membershipStatus: Int,
+		val content: String,
+		val latitude: Int,
+		val longitude: Int,
+		val alertOption: Int,
+		val lastReadTime: String,
+		val type: Int,
+		val status: Int,
+		val modifiedTime: String,
+		val condition: Int,
+		val icon: String,
+		val latestActivityTime: String,
+		val extensions: Object,
+		val createdTime: String) {
+
+	fun join() {
+		var response = HttpRequest
+				.post(String.format(Endpoints.COMMUNITY_JOIN_CHAT_THREAD, community.id, threadId, community.aminoClient.uid))
+				.header("NDCAUTH", "sid=" + community.aminoClient.sid)
+				.acceptJson()
+				.body();
+
+		_println(response);
+	}
+
+	fun sendMessage(chatMessage: String) {
+		if (!isMember()) { // If we aren't a member of this chat, then we need to join it!
+			join();
+		}
+		val innerObject = JsonObject()
+
+		innerObject.addProperty("content", chatMessage)
+		innerObject.addProperty("type", 0)
+		innerObject.addProperty("clientRefId", 843397539)
+
+		var response = HttpRequest
+				.post(String.format(Endpoints.COMMUNITY_CHAT_SEND_MESSAGE, community.id, threadId, chatMessage))
+				.header("NDCAUTH", "sid=" + community.aminoClient.sid)
+				.acceptJson()
+				.send(innerObject.toString())
+				.body();
+
+		_println(response)
+	}
+
+	fun isMember(): Boolean {
+		return membershipStatus > 0;
+	}
+}
+
+data class AminoMessage(
+		val community: AminoCommunity,
+		val uid: String,
+		val mediaType: Int,
+		val content: String,
+		val messageId: String,
+		val createdTime: String,
+		val type: Int,
+		val mediaValue: List<Object>)
+
+data class AminoExtensions(
+		val bm: List<String>,
+		val bannedMemberUidList: List<String>)
