@@ -24,7 +24,7 @@ data class AminoCommunity(
 		val membersCount: Int,
 		val primaryLanguage: String,
 		val communityHeat: String,
-		val mediaList: String,
+		val mediaList: List<Any>,
 		val content: String,
 		val tagline: String,
 		val advancedSettings: AminoCommunityAdvancedSettings,
