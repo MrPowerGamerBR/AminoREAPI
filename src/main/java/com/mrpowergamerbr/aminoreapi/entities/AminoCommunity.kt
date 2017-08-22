@@ -307,3 +307,32 @@ data class AminoMessage(
 data class AminoExtensions(
 		val bm: List<String>,
 		val bannedMemberUidList: List<String>)
+
+data class AminoHomeCommunity(
+		val status: Int,
+		val launchPage: AminoLaunchPage,
+		val endpoint: String,
+		val name: String,
+		val modifiedTime: String,
+		val communityHeat: Int,
+		val tagline: String,
+		val templateId: Int,
+		@SerializedName("agent")
+		val agent: AminoUser,
+		val joinType: Int,
+		val link: String,
+		val listedStatus: Int,
+		val themePack: AminoThemePack,
+		val ndcId: Int,
+		val createdTime: String,
+		val probationStatus: Int,
+		val membersCount: Int,
+		val primaryLanguage: String,
+		val promotionalMediaList: List<Any>,
+		val icon: String
+)
+
+data class AminoLaunchPage(
+		val mediaList: List<Any>,
+		val title: String
+)

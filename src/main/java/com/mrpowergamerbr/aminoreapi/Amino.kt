@@ -2,12 +2,16 @@ package com.mrpowergamerbr.aminoreapi
 
 import com.github.kevinsawicki.http.HttpRequest
 import com.google.gson.Gson
+import com.google.gson.JsonElement
 import com.google.gson.JsonObject
+import com.google.gson.JsonParser
+import com.mrpowergamerbr.aminoreapi.Amino.jsonParser
 import com.mrpowergamerbr.aminoreapi.utils.Endpoints
 
 object Amino {
-	val gson: Gson = Gson();
-	var DEBUG = false;
+	val gson: Gson = Gson()
+	val jsonParser: JsonParser = JsonParser()
+	var DEBUG = false
 
 	fun registerCheck(email: String, deviceId: String) {
 		val innerObject = JsonObject()
@@ -62,4 +66,8 @@ inline fun _println(obj: Any?) {
 	if (Amino.DEBUG) {
 		println(obj.toString());
 	}
+}
+
+inline fun parse(json: String): JsonElement {
+	return jsonParser.parse(json)
 }

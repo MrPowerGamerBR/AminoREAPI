@@ -1,12 +1,16 @@
 package com.mrpowergamerbr.aminoreapi
 
 import com.github.kevinsawicki.http.HttpRequest
-import com.github.salomonbrys.kotson.fromJson
+import com.github.salomonbrys.kotson.*
 import com.google.gson.JsonObject
 import com.google.gson.JsonParser
 import com.mrpowergamerbr.aminoreapi.entities.AminoCommunity
+import com.mrpowergamerbr.aminoreapi.entities.AminoHomeCommunity
 import com.mrpowergamerbr.aminoreapi.entities.AminoInvitation
+import com.mrpowergamerbr.aminoreapi.entities.AminoUserProfile
 import com.mrpowergamerbr.aminoreapi.utils.Endpoints
+import com.mrpowergamerbr.aminoreapi.utils.responses.AminoAffiliationsResponse
+import com.mrpowergamerbr.aminoreapi.utils.responses.AminoJoinedCommunitiesResponse
 import com.mrpowergamerbr.aminoreapi.utils.responses.LoginResponse
 import java.net.URLEncoder
 
@@ -46,7 +50,7 @@ class AminoClient(val login: String, val password: String, val deviceId: String)
 		return aminoResponse;
 	}
 
-	fun getAffiliations() {
+	fun getAffiliations(isActive: Boolean = true): AminoAffiliationsResponse {
 		var response = HttpRequest
 				.get(Endpoints.AFFILIATIONS)
 				.header("NDCAUTH", "sid=" + sid)
@@ -54,6 +58,8 @@ class AminoClient(val login: String, val password: String, val deviceId: String)
 				.body();
 
 		_println(response)
+
+		return Amino.gson.fromJson<AminoAffiliationsResponse>(response)
 	}
 
 	fun getSuggestedCommunities(lang: String) {
@@ -64,6 +70,27 @@ class AminoClient(val login: String, val password: String, val deviceId: String)
 				.body();
 
 		_println(response)
+	}
+
+	fun getJoinedCommunities(start: Int, size: Int): AminoJoinedCommunitiesResponse {
+		var response = HttpRequest
+				.get(String.format(Endpoints.JOINED_COMMUNITIES, start, size))
+				.header("NDCAUTH", "sid=" + sid)
+				.acceptJson()
+				.body();
+
+		_println(response)
+
+		val json = parse(response).obj
+
+		val map = mutableMapOf<String, AminoUserProfile>()
+		for ((key, value) in json["userInfoInCommunities"].obj.entrySet()) {
+			map[key] = Amino.gson.fromJson(value["userProfile"].obj)
+		}
+
+		return AminoJoinedCommunitiesResponse(response,
+				Amino.gson.fromJson(json["communityList"]),
+				map)
 	}
 
 	fun getTrendingCommunities(start: Int, size: Int, lang: String) {
