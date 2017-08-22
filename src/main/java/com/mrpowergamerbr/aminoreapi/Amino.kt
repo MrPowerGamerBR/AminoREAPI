@@ -21,7 +21,7 @@ object Amino {
 				.send(innerObject.toString())
 				.body();
 
-		println(response);
+		_println(response);
 	}
 
 	/**
@@ -54,7 +54,7 @@ object Amino {
 				.send(innerObject.toString())
 				.body();
 
-		println(response);
+		_println(response);
 	}
 }
 
