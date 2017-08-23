@@ -25,6 +25,7 @@ data class AminoCommunity(
 		val primaryLanguage: String,
 		val communityHeat: String,
 		val mediaList: List<Any>,
+		val promotionalMediaList: List<Any>,
 		val content: String,
 		val tagline: String,
 		val advancedSettings: AminoCommunityAdvancedSettings,
@@ -38,7 +39,8 @@ data class AminoCommunity(
 		val name: String,
 		val extensions: String,
 		val templateId: Int,
-		val createdTime: String) {
+		val createdTime: String,
+		val configuration: AminoServerConfiguration) {
 
 	fun join() {
 		var response = HttpRequest
@@ -182,7 +184,7 @@ data class AminoBlogPost(
 		val title: String,
 		val author: AminoUser,
 		val contentRating: Int,
-		val votedValue: Int,
+		val votesCount: Int,
 		val content: String,
 		val keywords: String,
 		val latitude: Int,
@@ -335,4 +337,20 @@ data class AminoHomeCommunity(
 data class AminoLaunchPage(
 		val mediaList: List<Any>,
 		val title: String
+)
+
+data class AminoCustomEntry(
+		val originalTitle: String,
+		val alias: String,
+		val url: String,
+		val id: String
+)
+
+data class AminoServerConfiguration(
+		val page: AminoServerPage
+)
+
+data class AminoServerPage(
+		val defaultList: List<AminoCustomEntry>,
+		val customList: List<AminoCustomEntry>
 )

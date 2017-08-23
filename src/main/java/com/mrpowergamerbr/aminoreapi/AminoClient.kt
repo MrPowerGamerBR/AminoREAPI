@@ -39,6 +39,8 @@ class AminoClient(val login: String, val password: String, val deviceId: String)
 				.send(innerObject.toString())
 				.body();
 
+		_println(response)
+
 		val aminoResponse = Amino.gson.fromJson(response, LoginResponse::class.java);
 		aminoResponse.jsonResponse = response;
 
@@ -168,6 +170,8 @@ class AminoClient(val login: String, val password: String, val deviceId: String)
 				.header("NDCAUTH", "sid=" + sid)
 				.acceptJson()
 				.body();
+
+		_println(response);
 
 		var parser = JsonParser();
 		var parsedJson = parser.parse(response).asJsonObject.get("community");
