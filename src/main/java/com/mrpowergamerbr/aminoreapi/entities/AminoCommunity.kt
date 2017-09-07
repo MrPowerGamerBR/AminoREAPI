@@ -37,7 +37,7 @@ data class AminoCommunity(
 		val icon: String,
 		val endpoint: String,
 		val name: String,
-		val extensions: String,
+		val extensions: AminoExtensions,
 		val templateId: Int,
 		val createdTime: String,
 		val configuration: AminoServerConfiguration) {
