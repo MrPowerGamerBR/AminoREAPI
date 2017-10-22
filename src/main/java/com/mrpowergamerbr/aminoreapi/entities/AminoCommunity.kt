@@ -144,8 +144,9 @@ data class AminoCommunity(
 	}
 
 	fun getBlogPost(blogPostId: String): AminoBlogPost {
+		_println("Getting blog post with id ${blogPostId} in community $id")
 		var response = HttpRequest
-				.get(String.format(Endpoints.COMMUNITY_CHAT_THREAD, id, blogPostId))
+				.get(String.format(Endpoints.GET_BLOG_POST, id, blogPostId))
 				.header("NDCAUTH", "sid=" + aminoClient.sid)
 				.acceptJson()
 				.body();
