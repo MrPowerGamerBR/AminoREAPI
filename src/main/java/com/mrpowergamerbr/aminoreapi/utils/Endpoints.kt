@@ -32,8 +32,9 @@ object Endpoints {
 	val COMMUNITY_NOTIFICATIONS = PREFIX + "/%s/s/notification?start=%s&size=%s&cv=%s"
 
 	// ===[ BLOG ENDPOINTS ]===
-	val POST_VOTE = PREFIX + "/%s/s/blog/%s/vote"
-	val POST_COMMENT = PREFIX + "/%s/s/blog/%s/comment"
+	val GET_POST = PREFIX + "/%s/s/blog/%s"
+	val POST_VOTE = GET_POST + "/vote"
+	val POST_COMMENT = GET_POST + "/comment"
 
 	// ===[ CHAT ENDPOINTS ]===
 	val COMMUNITY_CHAT_THREAD = PREFIX + "/%s/s/chat/thread?type=%s&start=%s&size=%s&cv=%s"

@@ -2,6 +2,7 @@ package com.mrpowergamerbr.aminoreapi.entities
 
 import com.github.kevinsawicki.http.HttpRequest
 import com.github.salomonbrys.kotson.fromJson
+import com.github.salomonbrys.kotson.obj
 import com.google.gson.JsonArray
 import com.google.gson.JsonObject
 import com.google.gson.JsonParser
@@ -96,8 +97,10 @@ data class AminoCommunity(
 		var blogFeed = Amino.gson.fromJson<List<AminoBlogPost>>(parsedJson)
 
 		for (post in blogFeed) {
-			post.community = this;
+			post.community = this
+			post.isFromFeed = true
 		}
+
 		return blogFeed;
 	}
 
@@ -139,6 +142,22 @@ data class AminoCommunity(
 
 		return chatThreads;
 	}
+
+	fun getBlogPost(blogPostId: String): AminoBlogPost {
+		var response = HttpRequest
+				.get(String.format(Endpoints.COMMUNITY_CHAT_THREAD, id, blogPostId))
+				.header("NDCAUTH", "sid=" + aminoClient.sid)
+				.acceptJson()
+				.body();
+
+		_println(response)
+
+		var parser = JsonParser()
+		var blogPost = Amino.gson.fromJson<AminoBlogPost>(parser.parse(response).obj["blog"])
+		blogPost.isFromFeed = false
+		blogPost.community = this
+		return blogPost
+	}
 }
 
 data class AminoUser(
@@ -177,6 +196,7 @@ data class AminoInvitation(
 		val inviteCode: String)
 
 data class AminoBlogPost(
+		var isFromFeed: Boolean,
 		var community: AminoCommunity,
 		val status: Int,
 		val style: Int,
