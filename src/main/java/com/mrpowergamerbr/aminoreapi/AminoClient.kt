@@ -3,240 +3,281 @@ package com.mrpowergamerbr.aminoreapi
 import com.github.kevinsawicki.http.HttpRequest
 import com.github.salomonbrys.kotson.*
 import com.google.gson.JsonObject
-import com.google.gson.JsonParser
-import com.mrpowergamerbr.aminoreapi.entities.AminoCommunity
-import com.mrpowergamerbr.aminoreapi.entities.AminoHomeCommunity
-import com.mrpowergamerbr.aminoreapi.entities.AminoInvitation
-import com.mrpowergamerbr.aminoreapi.entities.AminoUserProfile
+import com.mrpowergamerbr.aminoreapi.entities.AminoMessage
+import com.mrpowergamerbr.aminoreapi.entities.AminoReminders
+import com.mrpowergamerbr.aminoreapi.entities.AminoThread
+import com.mrpowergamerbr.aminoreapi.entities.CheckInResponse
+import com.mrpowergamerbr.aminoreapi.entities.CommunityInfo
+import com.mrpowergamerbr.aminoreapi.entities.DeviceInfo
+import com.mrpowergamerbr.aminoreapi.entities.JoinedCommunitiesInfo
+import com.mrpowergamerbr.aminoreapi.entities.PublicChats
 import com.mrpowergamerbr.aminoreapi.utils.Endpoints
-import com.mrpowergamerbr.aminoreapi.utils.responses.AminoAffiliationsResponse
-import com.mrpowergamerbr.aminoreapi.utils.responses.AminoJoinedCommunitiesResponse
-import com.mrpowergamerbr.aminoreapi.utils.responses.LoginResponse
+import com.mrpowergamerbr.aminoreapi.utils.IncorrentLoginException
+import com.mrpowergamerbr.aminoreapi.utils.InvalidPasswordException
+import java.io.File
 import java.net.URLEncoder
+import java.nio.file.Files
+import java.nio.file.Paths
+import javax.xml.bind.DatatypeConverter
+import javassist.CtMethod.ConstParameter.string
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import java.io.IOException
 
-class AminoClient(val login: String, val password: String, val deviceId: String) {
-	lateinit var secret: String;
-	lateinit var sid: String;
-	lateinit var uid: String;
 
-	/**
-	 * Starts the login process using the provided login, password and deviceId
-	 * @return the LoginResponse
-	 */
-	fun login(): LoginResponse {
-		// Preparing Login Payload
-		val innerObject = JsonObject()
 
-		innerObject.addProperty("email", login) // TODO: How the phone login is handled?
-		innerObject.addProperty("secret", "0 " + password) // TODO: Is the secret always prefixed by "0 "?
-		innerObject.addProperty("deviceID", deviceId) // TODO: Auto generated device ID?
-		innerObject.addProperty("clientType", 100) // TODO: Other client types?
-		innerObject.addProperty("action", "normal") // TODO: What are the other actions? (register?)
+class AminoClient(val email: String, val password: String, val deviceId: String) {
+	var sessionId: String? = null
 
-		var response = HttpRequest
-				.get(Endpoints.LOGIN)
-				.acceptJson()
-				.send(innerObject.toString())
-				.body();
+	fun login() {
+		// required for ws3.narvii.com
+		System.setProperty("https.protocols", "TLSv1.1")
 
-		_println(response)
+		val payload = JsonObject()
+		payload["email"] = email
+		payload["secret"] = "0 $password" // TODO: Always 0?
+		payload["deviceID"] = deviceId
+		payload["clientType"] = 100 // TODO: Always 100?
+		payload["action"] = "normal"
+		payload["timestamp"] = System.currentTimeMillis()
 
-		val aminoResponse = Amino.gson.fromJson(response, LoginResponse::class.java);
-		aminoResponse.jsonResponse = response;
+		val body = HttpRequest.post(Endpoints.LOGIN)
+				.header("NDCDEVICEID", deviceId)
+				.header("NDC-MSG-SIG", getMessageSignature())
+				.send(payload.toString())
+				.body()
 
-		_println(aminoResponse.jsonResponse)
+		val response = jsonParser.parse(body).obj
+		val statusCode = response["api:statuscode"].int
 
-		this.secret = aminoResponse.secret;
-		this.sid = aminoResponse.sid;
-		this.uid = aminoResponse.account.uid;
-		return aminoResponse;
-	}
+		if (statusCode == 214)
+			throw InvalidPasswordException()
 
-	fun getAffiliations(isActive: Boolean = true): AminoAffiliationsResponse {
-		var response = HttpRequest
-				.get(Endpoints.AFFILIATIONS)
-				.header("NDCAUTH", "sid=" + sid)
-				.acceptJson()
-				.body();
+		if (statusCode == 200)
+			throw IncorrentLoginException()
+
+		val sid = response["sid"].nullString
 
 		_println(response)
 
-		return Amino.gson.fromJson<AminoAffiliationsResponse>(response)
-	}
-
-	fun getSuggestedCommunities(lang: String) {
-		var response = HttpRequest
-				.get(String.format(Endpoints.SUGGESTED_COMMUNITIES, lang))
-				.header("NDCAUTH", "sid=" + sid)
-				.acceptJson()
-				.body();
-
-		_println(response)
-	}
-
-	fun getJoinedCommunities(start: Int, size: Int): AminoJoinedCommunitiesResponse {
-		var response = HttpRequest
-				.get(String.format(Endpoints.JOINED_COMMUNITIES, start, size))
-				.header("NDCAUTH", "sid=" + sid)
-				.acceptJson()
-				.body();
-
-		_println(response)
-
-		val json = parse(response).obj
-
-		val map = mutableMapOf<String, AminoUserProfile>()
-		for ((key, value) in json["userInfoInCommunities"].obj.entrySet()) {
-			map[key] = Amino.gson.fromJson(value["userProfile"].obj)
+		if (sid == null) {
+			return
 		}
 
-		return AminoJoinedCommunitiesResponse(response,
-				Amino.gson.fromJson(json["communityList"]),
-				map)
+		sessionId = sid
 	}
 
-	fun getTrendingCommunities(start: Int, size: Int, lang: String) {
-		var response = HttpRequest
-				.get(String.format(Endpoints.TRENDING_COMMUNITIES, start, size, lang))
-				.header("NDCAUTH", "sid=" + sid)
-				.acceptJson()
-				.body();
+	fun sendDeviceInfo(info: DeviceInfo) {
+		val body = HttpRequest.post(Endpoints.DEVICE_INFO)
+				.header("NDCDEVICEID", deviceId)
+				.header("NDC-MSG-SIG", getMessageSignature())
+				.send(gson.toJson(info))
+				.body()
 
-		_println(response)
+		_println(body)
 	}
 
-	fun getSuggestedKeywords(keyword: String, start: Int, size: Int, lang: String): List<String> {
-		var response = HttpRequest
-				.get(String.format(Endpoints.SUGGESTED_KEYWORDS, URLEncoder.encode(keyword, "UTF-8"), start, size, lang))
-				.header("NDCAUTH", "sid=" + sid)
-				.acceptJson()
-				.body();
+	fun getCommunityCollectionSections(languageCode: String, start: Int, size: Int) {
+		val body = HttpRequest.get(Endpoints.COMMUNITY_COLLECTION_SECTIONS.format(languageCode, start, size))
+				.header("NDCDEVICEID", deviceId)
+				.header("NDCAUTH", "sid=$sessionId")
+				.body()
 
-		_println(response)
+		_println(body)
+	}
 
-		var parser = JsonParser();
-		var parsedJson = parser.parse(response).asJsonObject.get("suggestedKeywordsList").asJsonArray;
+	fun getJoinedCommunities(start: Int, size: Int): JoinedCommunitiesInfo {
+		val body = HttpRequest.get(Endpoints.JOINED_COMMUNITIES.format(start, size))
+				.header("NDCDEVICEID", deviceId)
+				.header("NDCAUTH", "sid=$sessionId")
+				.body()
 
-		var list = ArrayList<String>();
+		_println(body)
 
-		for (value in parsedJson) {
-			list.add(value.asString);
+		return gson.fromJson(body)
+	}
+
+	fun getCommunityInfo(ndcId: String): CommunityInfo {
+		val body = HttpRequest.get(Endpoints.COMMUNITY_INFO.format(ndcId))
+				.header("NDCDEVICEID", deviceId)
+				.header("NDCAUTH", "sid=$sessionId")
+				.body()
+
+		_println(body)
+		return gson.fromJson(body)
+	}
+
+	fun getThread(ndcId: String, threadId: String): AminoThread {
+		val body = HttpRequest.get(Endpoints.COMMUNITY_THREAD.format(ndcId, threadId))
+				.header("NDCDEVICEID", deviceId)
+				.header("NDCAUTH", "sid=$sessionId")
+				.body()
+
+		_println(body)
+		return gson.fromJson(body)
+	}
+
+	fun getThreadMessages(ndcId: String, threadId: String, start: Int, size: Int, startTime: String? = null): List<AminoMessage> {
+		val url = if (startTime != null) {
+			Endpoints.COMMUNITY_CHAT_GET_MESSAGES_SINCE.format(ndcId, threadId, start, size, startTime)
+		} else {
+			Endpoints.COMMUNITY_CHAT_GET_MESSAGES.format(ndcId, threadId, start, size)
 		}
 
-		return list;
+		val body = HttpRequest.get(url)
+				.header("NDCDEVICEID", deviceId)
+				.header("NDCAUTH", "sid=$sessionId")
+				.body()
+
+		_println(body)
+		return gson.fromJson(jsonParser.parse(body)["messageList"])
 	}
 
-	fun searchCommunities(query: String, start: Int, size: Int, language: String, completeKeyword: Int): List<AminoCommunity> {
-		var response = HttpRequest
-				.get(String.format(Endpoints.SEARCH_COMMUNITIES, URLEncoder.encode(query, "UTF-8"), start, size, language, completeKeyword))
-				.header("NDCAUTH", "sid=" + sid)
-				.acceptJson()
-				.body();
+	fun sendMessageInThread(ndcId: String, threadId: String, content: String, clientRefId: Long = System.currentTimeMillis() / 1000): AminoMessage {
+		val payload = JsonObject()
 
-		_println(response)
+		payload["content"] = content
+		payload["type"] = 0
+		payload["clientRefId"] = clientRefId
+		payload["timestamp"] = System.currentTimeMillis() / 1000
 
-		var parser = JsonParser();
-		var parsedJson = parser.parse(response).asJsonObject.get("communityList").asJsonArray;
+		val body = HttpRequest.post(Endpoints.COMMUNITY_CHAT_SEND_MESSAGE.format(ndcId, threadId))
+				.header("NDCDEVICEID", deviceId)
+				.header("NDCAUTH", "sid=$sessionId")
+				.send(payload.toString())
+				.body()
 
-		var communityResults = Amino.gson.fromJson<List<AminoCommunity>>(parsedJson)
+		_println(body)
 
-		return communityResults;
+		return gson.fromJson(jsonParser.parse(body)["message"])
 	}
 
-	fun getHeadlines(start: Int, size: Int) {
-		var response = HttpRequest
-				.get(String.format(Endpoints.HEADLINES, start, size))
-				.header("NDCAUTH", "sid=" + sid)
-				.acceptJson()
-				.body();
+	fun sendFileInThread(ndcId: String, threadId: String, file: File, clientRefId: Long = System.currentTimeMillis() / 1000): AminoMessage {
+		val payload = JsonObject()
 
-		_println(response)
+		payload["content"] = null
+		payload["type"] = 0
+		payload["mediaType"] = 100
+		payload["mediaUploadValue"] = DatatypeConverter.printBase64Binary(file.readBytes())
+		payload["clientRefId"] = clientRefId
+		payload["timestamp"] = System.currentTimeMillis() / 1000
+
+		val body = HttpRequest.post(Endpoints.COMMUNITY_CHAT_SEND_MESSAGE.format(ndcId, threadId))
+				.header("NDCDEVICEID", deviceId)
+				.header("NDCAUTH", "sid=$sessionId")
+				.send(payload.toString())
+				.body()
+
+		_println(body)
+
+		return gson.fromJson(jsonParser.parse(body)["message"])
 	}
 
-	fun getDeviceInfo() { // TODO: Fix
-		var response = HttpRequest
-				.post(Endpoints.DEVICE_INFO)
-				.header("NDCAUTH", "sid=" + sid)
-				.acceptJson()
-				.body();
+	fun checkReminders(timezone: Int, vararg ndcIds: String): Map<String, AminoReminders> {
+		val batches = mutableListOf<List<String>>()
 
-		_println(response)
+		var currentList = mutableListOf<String>()
+		batches.add(currentList)
+		for (ndcId in ndcIds) {
+			if (currentList.size == 10) {
+				currentList = mutableListOf()
+				batches.add(currentList)
+			}
+			currentList.add(ndcId)
+		}
+
+		val map = mutableMapOf<String, AminoReminders>()
+
+		for (batch in batches) {
+			val body = HttpRequest.get(Endpoints.REMINDERS.format(URLEncoder.encode(batch.joinToString(","), "UTF-8"), timezone))
+					.header("NDCDEVICEID", deviceId)
+					.header("NDCAUTH", "sid=$sessionId")
+					.body()
+
+			_println(body)
+
+			jsonParser.parse(body)["reminderCheckResultInCommunities"].obj.entrySet().forEach {
+				map[it.key] = gson.fromJson(it.value)
+			}
+		}
+
+		return map
 	}
 
-	fun getCommunityById(communityId: String): AminoCommunity {
-		// First we are going to get the community info via the ID
-		var response = HttpRequest
-				.get(String.format(Endpoints.COMMUNITY_INFO, communityId))
-				.header("NDCAUTH", "sid=" + sid)
-				.acceptJson()
-				.body();
+	fun checkIn(timezone: Int, ndcId: String): CheckInResponse {
+		val payload = JsonObject()
+		payload["timezone"] = timezone
+		payload["ndcId"] = ndcId
 
-		_println(response);
+		val body = HttpRequest.post(Endpoints.COMMUNITY_CHECK_IN.format(ndcId))
+				.header("NDCDEVICEID", deviceId)
+				.header("NDCAUTH", "sid=$sessionId")
+				.header("NDC-MSG-SIG", getMessageSignature())
+				.send(payload.toString())
+				.body()
 
-		var parser = JsonParser();
-		var parsedJson = parser.parse(response).asJsonObject.get("community");
-
-		_println(parsedJson.toString());
-
-		var community = Amino.gson.fromJson(parsedJson.toString(), AminoCommunity::class.java);
-		community.id = communityId;
-		community.aminoClient = this;
-		return community;
+		return gson.fromJson(body)
 	}
 
-	fun getInvitationInfo(invitationUrl: String): AminoInvitation {
-		var invitationIdResponse = HttpRequest
-				.get(String.format(Endpoints.LINK_IDENTIFY, URLEncoder.encode(invitationUrl, "UTF-8")))
-				.header("NDCAUTH", "sid=" + sid)
-				.acceptJson()
-				.body();
+	fun getPublicChats(ndcId: String, start: Int, size: Int): PublicChats {
+		val body = HttpRequest.get(Endpoints.LIVE_LAYERS_PUBLIC_CHAT.format(ndcId, start, size))
+				.header("NDCDEVICEID", deviceId)
+				.header("NDCAUTH", "sid=$sessionId")
+				.body()
 
-		_println(invitationIdResponse);
+		_println(body)
 
-		var parser = JsonParser();
-		var parsedJson = parser.parse(invitationIdResponse).asJsonObject.get("invitation").asJsonObject;
-
-		return Amino.gson.fromJson(parsedJson.toString(), AminoInvitation::class.java);
+		return gson.fromJson(body)
 	}
 
-	fun getNotificationsForCommunity(communityId: String, start: Int, size: Int, cv: Double) { // TODO: What is cv?
-		var response = HttpRequest
-				.get(String.format(Endpoints.COMMUNITY_NOTIFICATIONS, communityId, start, size, cv))
-				.header("NDCAUTH", "sid=" + sid)
-				.acceptJson()
-				.body();
+	fun getBlogFeed(ndcId: String, start: Int, size: Int) {
+		val body = HttpRequest.get(Endpoints.COMMUNITY_FEED.format(ndcId, start, size))
+				.header("NDCDEVICEID", deviceId)
+				.header("NDCAUTH", "sid=$sessionId")
+				.body()
 
-		_println(response)
+		_println(body)
+
+		return gson.fromJson(body)
 	}
 
-	fun sendMessageInChat(communityId: String, thread: String, chatMessage: String) {
-		val innerObject = JsonObject()
+	fun websocketUpgrade(url: String) {
+		val client = OkHttpClient()
+		val request = Request.Builder()
+				.url(url)
+				.build()
 
-		innerObject.addProperty("content", chatMessage)
-		innerObject.addProperty("type", 0)
-		innerObject.addProperty("clientRefId", 843397539)
-
-		_println(innerObject)
-
-		var response = HttpRequest
-				.post(String.format(Endpoints.COMMUNITY_CHAT_SEND_MESSAGE, communityId, thread, chatMessage))
-				.header("NDCAUTH", "sid=" + sid)
-				.acceptJson()
-				.send(innerObject.toString())
-				.body();
-
-		_println(response)
+		client.newCall(request).execute().use({ response ->
+			System.out.println(response.body())
+		})
 	}
 
-	fun getMessagesInChat(communityId: String, threadId: String, start: Int, size: Int): String {
-		var response = HttpRequest
-				.get(String.format(Endpoints.COMMUNITY_CHAT_GET_MESSAGES, communityId, threadId, start, size))
-				.header("NDCAUTH", "sid=" + sid)
-				.acceptJson()
-				.body();
+	fun get(url: String, headers: Map<String, String> = mutableMapOf("NDCDEVICEID" to deviceId, "NDCAUTH" to "sid=$sessionId"), vararg variables: Any): String {
+		val body = HttpRequest.get(url)
+				.headers(headers)
+				.header("NDCDEVICEID", deviceId)
+				.header("NDCAUTH", "sid=$sessionId")
+				.header("NDC-MSG-SIG", getMessageSignature())
+				.header("User-Agent", "Dalvik/2.1.0 (Linux; U; Android 7.1.2; MotoG3-TE Build/NJH47F; com.narvii.amino.master/1.8.15305)")
+				.header("Upgrade", "websocket")
+				.header("Connection", "Upgrade")
+				.header("Sec-WebSocket-Key", "86iFBnuI8GWLlgWmSToY6g==")
+				.header("Sec-WebSocket-Version", "13")
+				.header("Accept-Encoding", "gzip")
+				.body()
 
-		_println(response)
+		_println(body)
 
-		return response;
+		return body
+	}
+
+	fun post(url: String, headers: Map<String, String> = mutableMapOf("NDCDEVICEID" to deviceId, "NDCAUTH" to "sid=$sessionId"), vararg variables: Any): String {
+		val body = HttpRequest.post(url.format(variables))
+				.headers(headers)
+				.body()
+
+		_println(body)
+
+		return body
 	}
 }

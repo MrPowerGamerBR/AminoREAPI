@@ -1,73 +1,48 @@
 package com.mrpowergamerbr.aminoreapi
 
-import com.github.kevinsawicki.http.HttpRequest
+import com.github.salomonbrys.kotson.array
+import com.github.salomonbrys.kotson.int
+import com.github.salomonbrys.kotson.nullString
+import com.github.salomonbrys.kotson.registerTypeAdapter
+import com.github.salomonbrys.kotson.string
 import com.google.gson.Gson
-import com.google.gson.JsonElement
-import com.google.gson.JsonObject
+import com.google.gson.GsonBuilder
 import com.google.gson.JsonParser
-import com.mrpowergamerbr.aminoreapi.Amino.jsonParser
-import com.mrpowergamerbr.aminoreapi.utils.Endpoints
+import com.mrpowergamerbr.aminoreapi.entities.AminoMedia
+import com.mrpowergamerbr.aminoreapi.entities.MediaList
+import java.util.*
 
 object Amino {
-	val gson: Gson = Gson()
-	val jsonParser: JsonParser = JsonParser()
 	var DEBUG = false
 
-	fun registerCheck(email: String, deviceId: String) {
-		val innerObject = JsonObject()
+	init {
+		gson = GsonBuilder().registerTypeAdapter<MediaList> {
+			deserialize {
+				val mediaList = it.json.array
 
-		innerObject.addProperty("email", email) // TODO: How the phone login is handled?
-		innerObject.addProperty("deviceID", deviceId) // TODO: Auto generated device ID?
+				val medias = mutableListOf<AminoMedia>()
 
-		var response = HttpRequest
-				.post(Endpoints.REGISTER_CHECK)
-				.acceptJson()
-				.send(innerObject.toString())
-				.body();
+				for (_media in mediaList) {
+					val media = _media.array
 
-		_println(response);
-	}
+					medias.add(AminoMedia(media[0].int, media[1].string, media[2].nullString))
+				}
 
-	/**
-	 *
-	 */
-	fun createAccount(email: String, password: String, deviceId: String, nickname: String) {
-		registerCheck(email, deviceId);
-		val innerObject = JsonObject()
-
-		innerObject.addProperty("email", email) // TODO: How the phone login is handled?
-		innerObject.addProperty("secret", "0 " + password) // TODO: Is the secret always prefixed by "0 "?
-		innerObject.addProperty("deviceID", deviceId) // TODO: Auto generated device ID?
-		innerObject.addProperty("deviceID2", deviceId) // TODO: Why so many different device IDs?
-		innerObject.addProperty("deviceID3", deviceId)
-		innerObject.addProperty("deviceID4", deviceId)
-		innerObject.addProperty("deviceID5", deviceId)
-		innerObject.addProperty("clientType", 100) // TODO: Other client types?
-		innerObject.addProperty("action", "normal") // TODO: What are the other actions? (register?)
-		innerObject.addProperty("val1", 16) // TODO: What is this?
-		innerObject.addProperty("val2", 81920)
-		innerObject.addProperty("clientCallbackURL", "narviiapp://relogin")
-		innerObject.addProperty("address", "São Paulo, Brasil")
-		innerObject.addProperty("nickname", "São Paulo, Brasil")
-		innerObject.addProperty("latitude", -0)
-		innerObject.addProperty("longitude", -0)
-
-		var response = HttpRequest
-				.post(Endpoints.REGISTER)
-				.acceptJson()
-				.send(innerObject.toString())
-				.body();
-
-		_println(response);
+				MediaList(medias)
+			}
+		}.create()
 	}
 }
 
-inline fun _println(obj: Any?) {
-	if (Amino.DEBUG) {
-		println(obj.toString());
-	}
+fun _println(obj: Any?) {
+	if (Amino.DEBUG)
+		println(obj)
 }
 
-inline fun parse(json: String): JsonElement {
-	return jsonParser.parse(json)
+fun getMessageSignature(): String {
+	// generates an random message signature, it seems Amino doesn't care about the signature (yet!)
+	return UUID.randomUUID().toString().replace("-", "").toUpperCase().substring(0, 27)
 }
+
+val jsonParser = JsonParser()
+lateinit var gson: Gson
