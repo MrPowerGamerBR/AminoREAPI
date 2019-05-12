@@ -16,7 +16,7 @@ class Community(
 ) {
     lateinit var client: AminoClient
 
-    fun getThreads(type: String, start: Int = 0, size: Int = 25) : List<Thread> {
+    suspend fun getThreads(type: String, start: Int = 0, size: Int = 25) : List<Thread> {
         val payload = client.get(Endpoints.COMMUNITY_CHAT_THREAD.format(this.ndcId, type, start, size))
         val json = jsonParser.parse(payload)
 

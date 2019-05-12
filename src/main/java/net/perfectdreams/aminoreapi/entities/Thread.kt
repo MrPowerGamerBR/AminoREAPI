@@ -47,7 +47,7 @@ class Thread(
 	lateinit var client: AminoClient
 
 
-	fun getThreadMessages(start: Int, size: Int, startTime: String? = null): List<AminoMessage> {
+	suspend fun getThreadMessages(start: Int, size: Int, startTime: String? = null): List<AminoMessage> {
 		val url = if (startTime != null) {
 			Endpoints.COMMUNITY_CHAT_GET_MESSAGES_SINCE.format(community.ndcId, threadId, start, size, startTime)
 		} else {
@@ -60,14 +60,14 @@ class Thread(
 		return gson.fromJson(jsonParser.parse(body)["messageList"])
 	}
 
-	fun sendMessage(content: String) {
+	suspend fun sendMessage(content: String) {
 		client.post(
 				Endpoints.COMMUNITY_CHAT_SEND_MESSAGE.format(community.ndcId, threadId), payload = jsonObject(
 				"content" to content,
 				"type" to 0, // there is also clientRefId and timestamp sent by the vanilla client, but it seems Amino doesn't care about them
 				// technically, if you don't send a clientRefId, it will be magically set to 0 by the server
 				// the timestamp isn't used at all
-                // to avoid sync issues, let's use the current time millis
+				// to avoid sync issues, let's use the current time millis
 				"clientRefId" to System.currentTimeMillis() / 1000,
 				"timestamp" to System.currentTimeMillis() / 1000
 		)

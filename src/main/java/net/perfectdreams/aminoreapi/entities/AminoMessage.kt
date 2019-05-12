@@ -7,7 +7,7 @@ class AminoMessage(
 		@SerializedName("uid")
 		val uniqueId: UUID,
 		val author: MiniUserProfile,
-		val threadId: String,
+		val threadId: UUID,
 		val mediaType: Int,
 		val content: String,
 		val mediaValue: String?,

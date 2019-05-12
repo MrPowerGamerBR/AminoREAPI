@@ -1,58 +1,103 @@
 package net.perfectdreams.aminoreapi
 
+import com.github.benmanes.caffeine.cache.Caffeine
 import com.github.kevinsawicki.http.HttpRequest
 import com.github.salomonbrys.kotson.*
 import com.google.gson.JsonObject
+import io.ktor.client.HttpClient
+import io.ktor.client.engine.okhttp.OkHttp
+import io.ktor.client.request.get
+import io.ktor.client.request.header
+import mu.KotlinLogging
 import net.perfectdreams.aminoreapi.entities.*
+import net.perfectdreams.aminoreapi.hooks.EventListener
 import net.perfectdreams.aminoreapi.utils.Endpoints
 import net.perfectdreams.aminoreapi.utils.IncorrentLoginException
 import net.perfectdreams.aminoreapi.utils.InvalidPasswordException
-import okhttp3.OkHttpClient
-import okhttp3.Request
+import net.perfectdreams.aminoreapi.utils.MiscUtils
+import net.perfectdreams.aminoreapi.websocket.AminoWebSocket
 import java.io.File
 import java.net.URLEncoder
+import java.util.*
+import java.util.concurrent.TimeUnit
 
+class AminoClient(
+		private val credentials: AminoClientBuilder.Credentials,
+		private val deviceId: String,
+		private var connectToWebSocket: Boolean,
+		private var cacheEnabled: Boolean
+) {
+	companion object {
+		private val logger = KotlinLogging.logger {}
+	}
 
-class AminoClient(val email: String, val password: String, val deviceId: String) {
-	var sessionId: String? = null
+	private var sessionId: String? = null
+	internal var listeners = mutableListOf<EventListener>()
+	private val http = HttpClient(OkHttp) {
+		expectSuccess = false
+	}
+	private var webSocket: AminoWebSocket? = null
+	private val communityCache = Caffeine.newBuilder()
+			.expireAfterWrite(1L, TimeUnit.MINUTES)
+			.maximumSize(if (cacheEnabled) Long.MAX_VALUE else 0)
+			.build<Long, Community>()
+			.asMap()
+	private val threadCache = Caffeine.newBuilder()
+			.expireAfterWrite(1L, TimeUnit.MINUTES)
+			.maximumSize(if (cacheEnabled) Long.MAX_VALUE else 0)
+			.build<UUID, Thread>()
+			.asMap()
 
-	fun login() {
-		// required for ws3.narvii.com
+	suspend fun login() {
+		// required for wsX.narvii.com
 		System.setProperty("https.protocols", "TLSv1.1")
 
-		val payload = JsonObject()
-		payload["email"] = email
-		payload["secret"] = "0 $password" // TODO: Always 0?
-		payload["deviceID"] = deviceId
-		payload["clientType"] = 100 // TODO: Always 100?
-		payload["action"] = "normal"
-		payload["timestamp"] = System.currentTimeMillis()
+		if (credentials is AminoClientBuilder.SessionIdCredentials)
+			this.sessionId = credentials.sessionId
+		else {
+			val payload = JsonObject()
 
-		val body = HttpRequest.post(Endpoints.LOGIN)
-				.header("NDCDEVICEID", deviceId)
-				.header("NDC-MSG-SIG", getMessageSignature())
-				.send(payload.toString())
-				.body()
+			if (credentials is AminoClientBuilder.EmailAndPasswordCredentials) {
+				payload["email"] = credentials.email
+				payload["secret"] = "0 ${credentials.password}" // TODO: Always 0?
+			}
 
-		val response = jsonParser.parse(body).obj
-		val statusCode = response["api:statuscode"].int
+			payload["deviceID"] = deviceId
+			payload["clientType"] = 100 // TODO: Always 100?
+			payload["action"] = "normal"
+			payload["timestamp"] = System.currentTimeMillis()
 
-		if (statusCode == 214)
-			throw InvalidPasswordException()
+			val body = HttpRequest.post(Endpoints.LOGIN)
+					.header("NDCDEVICEID", deviceId)
+					.header("NDC-MSG-SIG", getMessageSignature())
+					.send(payload.toString())
+					.body()
 
-		if (statusCode == 200)
-			throw IncorrentLoginException()
+			val response = jsonParser.parse(body).obj
+			val statusCode = response["api:statuscode"].int
 
-		val sid = response["sid"].nullString
+			if (statusCode == 214)
+				throw InvalidPasswordException()
 
-		_println(response)
+			if (statusCode == 200)
+				throw IncorrentLoginException()
 
-		if (sid == null) {
-			return
+			val sid = response["sid"].nullString
+
+			_println(response)
+
+			if (sid == null) {
+				return
+			}
+
+			sessionId = sid
 		}
 
-		sessionId = sid
+		connectToWebSocket()
 	}
+
+	fun getCachedCommunities() = Collections.unmodifiableCollection(communityCache.values)
+	fun getCachedThreads() = Collections.unmodifiableCollection(threadCache.values)
 
 	fun sendDeviceInfo(info: DeviceInfo) {
 		val body = HttpRequest.post(Endpoints.DEVICE_INFO)
@@ -73,11 +118,8 @@ class AminoClient(val email: String, val password: String, val deviceId: String)
 		_println(body)
 	}
 
-	fun getJoinedCommunities(start: Int, size: Int): List<Community> {
-		val body = HttpRequest.get(Endpoints.JOINED_COMMUNITIES.format(start, size))
-				.header("NDCDEVICEID", deviceId)
-				.header("NDCAUTH", "sid=$sessionId")
-				.body()
+	suspend fun getJoinedCommunities(start: Int, size: Int): List<Community> {
+		val body = get(Endpoints.JOINED_COMMUNITIES.format(start, size))
 
 		_println(body)
 
@@ -87,17 +129,23 @@ class AminoClient(val email: String, val password: String, val deviceId: String)
 
 		return gson.fromJson<List<Community>>(communityList).onEach {
 			it.client = this
+			communityCache[it.ndcId] = it
 			userInfoInCommunities[it.ndcId.toString()].nullObj?.let { jsonObject ->
 				it.userInfo = gson.fromJson(jsonObject)
 			}
 		}
 	}
 
-	fun getCommunityInfo(ndcId: String): Community {
-		val body = HttpRequest.get(Endpoints.COMMUNITY_INFO.format(ndcId))
-				.header("NDCDEVICEID", deviceId)
-				.header("NDCAUTH", "sid=$sessionId")
-				.body()
+	fun getCommunityById(id: String) = getCommunityById(MiscUtils.toLongCommunityId(id))
+	fun getCommunityById(id: Long) = communityCache[id]
+
+	suspend fun retrieveCommunityById(id: String, checkOnCache: Boolean = true) = retrieveCommunityById(MiscUtils.toLongCommunityId(id), checkOnCache)
+
+	suspend fun retrieveCommunityById(id: Long, checkOnCache: Boolean = true): Community? {
+		if (checkOnCache)
+			communityCache[id]?.let { return it }
+
+		val body = get(Endpoints.COMMUNITY_INFO.format(id))
 
 		_println(body)
 
@@ -105,17 +153,34 @@ class AminoClient(val email: String, val password: String, val deviceId: String)
 		val community = payload["community"].obj
 		val userInfoInCommunity = payload["currentUserInfo"].obj
 
-		return gson.fromJson<Community>(community).also { it.client = this; it.userInfo = gson.fromJson(userInfoInCommunity) }
+		val daoCommunity = gson.fromJson<Community>(community).also { it.client = this; it.userInfo = gson.fromJson(userInfoInCommunity) }
+		communityCache[id] = daoCommunity
+
+		return daoCommunity
 	}
 
-	fun getThread(ndcId: String, threadId: String): Thread {
-		val body = HttpRequest.get(Endpoints.COMMUNITY_THREAD.format(ndcId, threadId))
-				.header("NDCDEVICEID", deviceId)
-				.header("NDCAUTH", "sid=$sessionId")
-				.body()
+	fun getThreadById(communityId: String, id: UUID) = getThreadById(MiscUtils.toLongCommunityId(communityId), id)
+	fun getThreadById(communityId: Long, id: UUID) = threadCache[id]
+
+	suspend fun retrieveThreadById(communityId: String, id: UUID, checkOnCache: Boolean = true) = retrieveThreadById(MiscUtils.toLongCommunityId(communityId), id)
+
+	suspend fun retrieveThreadById(communityId: Long, id: UUID, checkOnCache: Boolean = true): Thread? {
+		if (threadCache.containsKey(id))
+			return threadCache[id]
+
+		val body = get(Endpoints.COMMUNITY_THREAD.format(communityId, id))
 
 		_println(body)
-		return gson.fromJson(body)
+		val community = retrieveCommunityById(communityId) ?: throw IllegalStateException("Getting thread information from a non-existent community!")
+
+		val thread = gson.fromJson<Thread>(jsonParser.parse(body)["thread"]).also {
+			it.community = community
+			it.client = this
+		}
+
+		threadCache[id] = thread
+
+		return thread
 	}
 
 	fun getThreadMessages(ndcId: String, threadId: String, start: Int, size: Int, startTime: String? = null): List<AminoMessage> {
@@ -242,44 +307,14 @@ class AminoClient(val email: String, val password: String, val deviceId: String)
 		return gson.fromJson(body)
 	}
 
-	fun websocketUpgrade(url: String) {
-		val client = OkHttpClient()
-		val request = Request.Builder()
-				.url(url)
-				.build()
+	suspend fun get(url: String, headers: Map<String, String> = mutableMapOf("NDCDEVICEID" to deviceId, "NDCAUTH" to "sid=$sessionId"), vararg variables: Any): String {
+		val result = http.get<String>(url) {
+			headers.forEach { key, value ->
+				header(key, value)
+			}
+		}
 
-		client.newCall(request).execute().use({ response ->
-			System.out.println(response.body())
-		})
-	}
-
-	fun get(url: String, headers: Map<String, String> = mutableMapOf("NDCDEVICEID" to deviceId, "NDCAUTH" to "sid=$sessionId"), vararg variables: Any): String {
-		val body = HttpRequest.get(url)
-				.headers(headers)
-				.body()
-
-		_println(body)
-
-		return body
-	}
-
-	fun _unusedGet(url: String, headers: Map<String, String> = mutableMapOf("NDCDEVICEID" to deviceId, "NDCAUTH" to "sid=$sessionId"), vararg variables: Any): String {
-		val body = HttpRequest.get(url)
-				.headers(headers)
-				.header("NDCDEVICEID", deviceId)
-				.header("NDCAUTH", "sid=$sessionId")
-				.header("NDC-MSG-SIG", getMessageSignature())
-				.header("User-Agent", "Dalvik/2.1.0 (Linux; U; Android 7.1.2; MotoG3-TE Build/NJH47F; com.narvii.amino.master/1.8.15305)")
-				.header("Upgrade", "websocket")
-				.header("Connection", "Upgrade")
-				.header("Sec-WebSocket-Key", "86iFBnuI8GWLlgWmSToY6g==")
-				.header("Sec-WebSocket-Version", "13")
-				.header("Accept-Encoding", "gzip")
-				.body()
-
-		_println(body)
-
-		return body
+		return result
 	}
 
 	fun post(url: String, headers: Map<String, String> = mutableMapOf("NDCDEVICEID" to deviceId, "NDCAUTH" to "sid=$sessionId"), payload: JsonObject): String {
@@ -290,6 +325,8 @@ class AminoClient(val email: String, val password: String, val deviceId: String)
 		_println("payload:")
 		_println(payload)
 
+		println(url)
+
 		val body = HttpRequest.post(url)
 				.headers(headers)
 				.send(payload)
@@ -298,5 +335,36 @@ class AminoClient(val email: String, val password: String, val deviceId: String)
 		_println(body)
 
 		return body
+	}
+
+	fun addEventListener(eventListener: EventListener) {
+		listeners.add(eventListener)
+	}
+
+	suspend fun getWebSocketUrl(): String {
+		/* val payload = http.get<String>("https://aminoapps.com/api/chat/web-socket-url") {
+			this.header("User-Agent", "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Ubuntu Chromium/73.0.3683.86 Chrome/73.0.3683.86 Safari/537.36")
+			// this.header("User-Agent", "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Ubuntu Chromium/73.0.3683.86 Chrome/73.0.3683.86 Safari/537.36")
+			this.header("X-Request-With", "XMLHttpRequest")
+			this.header("Cookie", "device_id=$deviceId; sid=$sessionId")
+		} */
+
+		// return json["result"]["url"].string
+		return "wss://ws1.narvii.com/?signbody=${deviceId}%7C${System.currentTimeMillis()}"
+	}
+
+	suspend fun connectToWebSocket() {
+		logger.info("Connecting to WebSocket...")
+
+		val webSocket = AminoWebSocket(
+				this,
+				getWebSocketUrl(),
+				mapOf(
+						"NDCDEVICEID" to deviceId,
+						"NDCAUTH" to "sid=$sessionId"
+				)
+		)
+		this.webSocket = webSocket
+		webSocket.run()
 	}
 }
