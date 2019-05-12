@@ -1,13 +1,13 @@
-package com.mrpowergamerbr.aminoreapi.entities
+package net.perfectdreams.aminoreapi.entities
 
 import java.util.*
 
-class AminoCommunityInfo(
+class AminoCommunity(
 		val status: Int,
 		val launchPage: LaunchPage,
 		val endpoint: String,
 		val name: String,
-		val modifiedTime: Any,
+		val modifiedTime: Date,
 		val communityHeat: Double,
 		val tagline: String,
 		val templateId: Int,
@@ -17,18 +17,10 @@ class AminoCommunityInfo(
 		val listedStatus: Int,
 		val themePack: ThemePack,
 		val ndcId: Int,
-		val createdTime: Any,
+		val createdTime: Date,
 		val probationStatus: Int,
 		val membersCount: Int,
 		val primaryLanguage: String,
 		val promotionalMediaList: MediaList?,
-		val icon: String,
-
-		// INFO EXCLUSIVE
-		val keywords: String,
-		val searchable: Boolean,
-		val content: String?,
-		val advancedSettings: Any,
-		val communityHeadList: Any?,
-		val configuration: Any?
+		val icon: String
 )

@@ -1,4 +1,4 @@
-package com.mrpowergamerbr.aminoreapi.entities
+package net.perfectdreams.aminoreapi.entities
 
 class UserInfo(
 		val notificationsCount: Int,

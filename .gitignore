@@ -3,6 +3,9 @@
 
 src/main/java/com/mrpowergamerbr/aminoreapi/ignoremeplz/
 src/main/java/com/mrpowergamerbr/aminoreapi/ignoremeplz/**
+src/main/java/net/perfectdreams/aminoreapi/ignoremeplz/
+src/main/java/net/perfectdreams/aminoreapi/ignoremeplz/**
+
 # User-specific stuff:
 .idea/**/workspace.xml
 .idea/**/tasks.xml

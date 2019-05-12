@@ -1,4 +1,4 @@
-package com.mrpowergamerbr.aminoreapi.utils
+package net.perfectdreams.aminoreapi.utils
 
 import com.google.gson.JsonObject
 import com.google.gson.annotations.SerializedName

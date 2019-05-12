@@ -1,4 +1,4 @@
-package com.mrpowergamerbr.aminoreapi.utils
+package net.perfectdreams.aminoreapi.utils
 
 object Endpoints {
 	val PREFIX = "http://service.narvii.com/api/v1";
@@ -43,9 +43,9 @@ object Endpoints {
 
 	// ===[ CHAT ENDPOINTS ]===
 	val COMMUNITY_THREAD = PREFIX + "/x%s/s/chat/thread/%s"
-	val COMMUNITY_CHAT_THREAD = PREFIX + "/%s/s/chat/thread?type=%s&start=%s&size=%s&cv=%s"
+	val COMMUNITY_CHAT_THREAD = PREFIX + "/x%s/s/chat/thread?type=%s&start=%s&size=%s"
 	val COMMUNITY_JOIN_CHAT_THREAD = PREFIX + "/%s/s/chat/thread/%s/member/%s"
-	val COMMUNITY_CHAT_SEND_MESSAGE = PREFIX + "/%s/s/chat/thread/%s/message"
+	val COMMUNITY_CHAT_SEND_MESSAGE = PREFIX + "/x%s/s/chat/thread/%s/message"
 	val COMMUNITY_CHAT_GET_MESSAGES = PREFIX + "/x%s/s/chat/thread/%s/message?start=%s&size=%s"
 	val COMMUNITY_CHAT_GET_MESSAGES_SINCE = PREFIX + "/x%s/s/chat/thread/%s/message?start=%s&size=%s&starttime=%s"
 

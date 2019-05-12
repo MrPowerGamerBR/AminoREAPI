@@ -1,29 +1,16 @@
-package com.mrpowergamerbr.aminoreapi
+package net.perfectdreams.aminoreapi
 
 import com.github.kevinsawicki.http.HttpRequest
 import com.github.salomonbrys.kotson.*
 import com.google.gson.JsonObject
-import com.mrpowergamerbr.aminoreapi.entities.AminoMessage
-import com.mrpowergamerbr.aminoreapi.entities.AminoReminders
-import com.mrpowergamerbr.aminoreapi.entities.AminoThread
-import com.mrpowergamerbr.aminoreapi.entities.CheckInResponse
-import com.mrpowergamerbr.aminoreapi.entities.CommunityInfo
-import com.mrpowergamerbr.aminoreapi.entities.DeviceInfo
-import com.mrpowergamerbr.aminoreapi.entities.JoinedCommunitiesInfo
-import com.mrpowergamerbr.aminoreapi.entities.PublicChats
-import com.mrpowergamerbr.aminoreapi.utils.Endpoints
-import com.mrpowergamerbr.aminoreapi.utils.IncorrentLoginException
-import com.mrpowergamerbr.aminoreapi.utils.InvalidPasswordException
-import java.io.File
-import java.net.URLEncoder
-import java.nio.file.Files
-import java.nio.file.Paths
-import javax.xml.bind.DatatypeConverter
-import javassist.CtMethod.ConstParameter.string
+import net.perfectdreams.aminoreapi.entities.*
+import net.perfectdreams.aminoreapi.utils.Endpoints
+import net.perfectdreams.aminoreapi.utils.IncorrentLoginException
+import net.perfectdreams.aminoreapi.utils.InvalidPasswordException
 import okhttp3.OkHttpClient
 import okhttp3.Request
-import java.io.IOException
-
+import java.io.File
+import java.net.URLEncoder
 
 
 class AminoClient(val email: String, val password: String, val deviceId: String) {
@@ -86,7 +73,7 @@ class AminoClient(val email: String, val password: String, val deviceId: String)
 		_println(body)
 	}
 
-	fun getJoinedCommunities(start: Int, size: Int): JoinedCommunitiesInfo {
+	fun getJoinedCommunities(start: Int, size: Int): List<Community> {
 		val body = HttpRequest.get(Endpoints.JOINED_COMMUNITIES.format(start, size))
 				.header("NDCDEVICEID", deviceId)
 				.header("NDCAUTH", "sid=$sessionId")
@@ -94,20 +81,34 @@ class AminoClient(val email: String, val password: String, val deviceId: String)
 
 		_println(body)
 
-		return gson.fromJson(body)
+		val payload = jsonParser.parse(body)
+		val communityList = payload["communityList"].array
+		val userInfoInCommunities = payload["userInfoInCommunities"].obj
+
+		return gson.fromJson<List<Community>>(communityList).onEach {
+			it.client = this
+			userInfoInCommunities[it.ndcId.toString()].nullObj?.let { jsonObject ->
+				it.userInfo = gson.fromJson(jsonObject)
+			}
+		}
 	}
 
-	fun getCommunityInfo(ndcId: String): CommunityInfo {
+	fun getCommunityInfo(ndcId: String): Community {
 		val body = HttpRequest.get(Endpoints.COMMUNITY_INFO.format(ndcId))
 				.header("NDCDEVICEID", deviceId)
 				.header("NDCAUTH", "sid=$sessionId")
 				.body()
 
 		_println(body)
-		return gson.fromJson(body)
+
+		val payload = jsonParser.parse(body)
+		val community = payload["community"].obj
+		val userInfoInCommunity = payload["currentUserInfo"].obj
+
+		return gson.fromJson<Community>(community).also { it.client = this; it.userInfo = gson.fromJson(userInfoInCommunity) }
 	}
 
-	fun getThread(ndcId: String, threadId: String): AminoThread {
+	fun getThread(ndcId: String, threadId: String): Thread {
 		val body = HttpRequest.get(Endpoints.COMMUNITY_THREAD.format(ndcId, threadId))
 				.header("NDCDEVICEID", deviceId)
 				.header("NDCAUTH", "sid=$sessionId")
@@ -158,7 +159,7 @@ class AminoClient(val email: String, val password: String, val deviceId: String)
 		payload["content"] = null
 		payload["type"] = 0
 		payload["mediaType"] = 100
-		payload["mediaUploadValue"] = DatatypeConverter.printBase64Binary(file.readBytes())
+		// payload["mediaUploadValue"] = DatatypeConverter.printBase64Binary(file.readBytes())
 		payload["clientRefId"] = clientRefId
 		payload["timestamp"] = System.currentTimeMillis() / 1000
 
@@ -255,6 +256,16 @@ class AminoClient(val email: String, val password: String, val deviceId: String)
 	fun get(url: String, headers: Map<String, String> = mutableMapOf("NDCDEVICEID" to deviceId, "NDCAUTH" to "sid=$sessionId"), vararg variables: Any): String {
 		val body = HttpRequest.get(url)
 				.headers(headers)
+				.body()
+
+		_println(body)
+
+		return body
+	}
+
+	fun _unusedGet(url: String, headers: Map<String, String> = mutableMapOf("NDCDEVICEID" to deviceId, "NDCAUTH" to "sid=$sessionId"), vararg variables: Any): String {
+		val body = HttpRequest.get(url)
+				.headers(headers)
 				.header("NDCDEVICEID", deviceId)
 				.header("NDCAUTH", "sid=$sessionId")
 				.header("NDC-MSG-SIG", getMessageSignature())
@@ -271,9 +282,17 @@ class AminoClient(val email: String, val password: String, val deviceId: String)
 		return body
 	}
 
-	fun post(url: String, headers: Map<String, String> = mutableMapOf("NDCDEVICEID" to deviceId, "NDCAUTH" to "sid=$sessionId"), vararg variables: Any): String {
-		val body = HttpRequest.post(url.format(variables))
+	fun post(url: String, headers: Map<String, String> = mutableMapOf("NDCDEVICEID" to deviceId, "NDCAUTH" to "sid=$sessionId"), payload: JsonObject): String {
+		return post(url, headers, gson.toJson(payload))
+	}
+
+	fun post(url: String, headers: Map<String, String> = mutableMapOf("NDCDEVICEID" to deviceId, "NDCAUTH" to "sid=$sessionId"), payload: String): String {
+		_println("payload:")
+		_println(payload)
+
+		val body = HttpRequest.post(url)
 				.headers(headers)
+				.send(payload)
 				.body()
 
 		_println(body)

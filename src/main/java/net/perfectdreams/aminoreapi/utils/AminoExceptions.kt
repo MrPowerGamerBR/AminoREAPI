@@ -1,4 +1,4 @@
-package com.mrpowergamerbr.aminoreapi.utils
+package net.perfectdreams.aminoreapi.utils
 
 class InvalidPasswordException : Exception()
 

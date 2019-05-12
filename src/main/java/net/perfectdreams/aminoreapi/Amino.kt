@@ -1,22 +1,18 @@
-package com.mrpowergamerbr.aminoreapi
+package net.perfectdreams.aminoreapi
 
-import com.github.salomonbrys.kotson.array
-import com.github.salomonbrys.kotson.int
-import com.github.salomonbrys.kotson.nullString
-import com.github.salomonbrys.kotson.registerTypeAdapter
-import com.github.salomonbrys.kotson.string
+import com.github.salomonbrys.kotson.*
 import com.google.gson.Gson
 import com.google.gson.GsonBuilder
 import com.google.gson.JsonParser
-import com.mrpowergamerbr.aminoreapi.entities.AminoMedia
-import com.mrpowergamerbr.aminoreapi.entities.MediaList
+import net.perfectdreams.aminoreapi.entities.AminoMedia
+import net.perfectdreams.aminoreapi.entities.MediaList
 import java.util.*
 
 object Amino {
 	var DEBUG = false
 
 	init {
-		gson = GsonBuilder().registerTypeAdapter<MediaList> {
+		gson = GsonBuilder().serializeNulls().registerTypeAdapter<MediaList> {
 			deserialize {
 				val mediaList = it.json.array
 
