@@ -68,5 +68,5 @@ community.getBlogFeed(0, 25);
 ## Related Projects
 |Name|Author|Language|
 |--|--|--|
-|[Amino.JS]([https://github.com/AminoJS/Amino.JS](https://github.com/AminoJS/Amino.JS))|@AminoJS|JavaScript
-|[AminoAcids]([https://github.com/basswaver/AminoAcids](https://github.com/basswaver/AminoAcids))|@basswaver|Python
+|[Amino.JS]([https://github.com/AminoJS/Amino.JS](https://github.com/AminoJS/Amino.JS))|[@AminoJS](https://github.com/AminoJS)|JavaScript
+|[AminoAcids]([https://github.com/basswaver/AminoAcids](https://github.com/basswaver/AminoAcids))|[@basswaver](https://github.com/basswaver)|Python
